@@ -5,25 +5,20 @@ Modo Passivo: Scans furtivos com técnicas de evasão avançadas
 Modo Agressivo: Enumeração profunda de serviços e vulnerabilidades
 """
 
-import argparse
-import ipaddress
 import socket
-import sys
-from utils.helpers import create_output_dir
-from modules.scan import run_stealth_scan, run_aggressive_scan
-from modules.subdomain import subdomain_scan
-from modules.report import generate_report_html, generate_report_json, generate_report_txt
+import argparse
 import random
 import time
 import json
 import os
+import sys
+import ipaddress
 import re
 import dns.resolver
 from datetime import datetime
 from scapy.all import IP, TCP, sr1, RandShort, conf
 import requests
 from requests.exceptions import RequestException
-import importlib.util
 
 # Configurações globais
 OUTPUT_DIR = "output"
@@ -77,24 +72,16 @@ SUBDOMAINS = [
     'server', 'ns', 'ns1', 'ns2', 'dns', 'mx', 'owa', 'cpanel'
 ]
 
-PLUGINS_DIR = os.path.join(os.path.dirname(__file__), 'modules', 'plugins')
-
-def load_plugin(plugin_name):
-    plugin_path = os.path.join(PLUGINS_DIR, f'{plugin_name}.py')
-    if not os.path.isfile(plugin_path):
-        print(f"[-] Plugin '{plugin_name}' não encontrado em {PLUGINS_DIR}")
-        sys.exit(1)
-    spec = importlib.util.spec_from_file_location(plugin_name, plugin_path)
-    plugin = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(plugin)
-    return plugin
-
 def disclaimer():
     return """
     Ferramenta criada para fins educacionais e testes autorizados.
     O uso indevido é de responsabilidade do usuário.
     CHDevSec 2025 - Todos os direitos reservados.
     """
+
+def create_output_dir():
+    if not os.path.exists(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
 
 def get_service_info(port, banner):
     """Identifica serviços e níveis de risco com base na porta e banner"""
@@ -805,97 +792,50 @@ def generate_report_txt(target, scan_data, scan_mode, filename):
     print(f"[+] Relatório TXT gerado: {filename}")
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="ShadowPort Pro - Footprinting, Enumeração e Exploração Modular",
-        epilog="Exemplos:\n  python ShadowPort.py scan -t alvo.com --range 1-1000 --html\n  python ShadowPort.py audit -t alvo.com --json\n  python ShadowPort.py exec -t alvo.com --plugin brute_ssh",
-        formatter_class=argparse.RawTextHelpFormatter
-    )
-    subparsers = parser.add_subparsers(dest='mode', required=True, help='Modo de operação')
-
-    # Subcomando: scan
-    scan_parser = subparsers.add_parser('scan', help='Scan padrão (stealth/agressivo)')
-    scan_parser.add_argument('-t', '--target', required=True, help='IP ou domínio alvo')
-    scan_parser.add_argument('--range', default='1-1000', help='Range de portas (ex: 1-1000)')
-    scan_parser.add_argument('--aggressive', action='store_true', help='Ativa modo agressivo')
-    scan_parser.add_argument('--html', action='store_true', help='Gera relatório HTML')
-    scan_parser.add_argument('--json', action='store_true', help='Gera relatório JSON')
-    scan_parser.add_argument('--verbose', action='store_true', help='Mostra detalhes da execução')
-    scan_parser.add_argument('--output-name', help='Nome personalizado para arquivos de saída')
-    scan_parser.add_argument('--speed', choices=['slow', 'medium', 'fast'], default='medium', help='Velocidade do scan (padrão: medium)')
-
-    # Subcomando: audit
-    audit_parser = subparsers.add_parser('audit', help='Modo auditoria (apenas detecção, sem exploração)')
-    audit_parser.add_argument('-t', '--target', required=True, help='IP ou domínio alvo')
-    audit_parser.add_argument('--range', default='1-1000', help='Range de portas (ex: 1-1000)')
-    audit_parser.add_argument('--html', action='store_true', help='Gera relatório HTML')
-    audit_parser.add_argument('--json', action='store_true', help='Gera relatório JSON')
-    audit_parser.add_argument('--verbose', action='store_true', help='Mostra detalhes da execução')
-    audit_parser.add_argument('--output-name', help='Nome personalizado para arquivos de saída')
-    audit_parser.add_argument('--speed', choices=['slow', 'medium', 'fast'], default='medium', help='Velocidade do scan (padrão: medium)')
-
-    # Subcomando: exec
-    exec_parser = subparsers.add_parser('exec', help='Modo execução (exploração controlada, plugins)')
-    exec_parser.add_argument('-t', '--target', required=True, help='IP ou domínio alvo')
-    exec_parser.add_argument('--plugin', required=True, help='Nome do plugin de exploração (ex: brute_ssh)')
-    exec_parser.add_argument('--plugin-args', nargs=argparse.REMAINDER, help='Argumentos extras para o plugin')
-    exec_parser.add_argument('--verbose', action='store_true', help='Mostra detalhes da execução')
-
-    args = parser.parse_args()
-
-    # Resolução de alvo
+    print(f"""
+  /$$$$$$  /$$                       /$$                         /$$$$$$$                       /$$    
+ /$$__  $$| $$                      | $$                        | $$__  $$                     | $$    
+| $$  \__/| $$$$$$$   /$$$$$$   /$$$$$$$  /$$$$$$  /$$  /$$  /$$| $$  \ $$ /$$$$$$   /$$$$$$  /$$$$$$  
+|  $$$$$$ | $$__  $$ |____  $$ /$$__  $$ /$$__  $$| $$ | $$ | $$| $$$$$$$//$$__  $$ /$$__  $$|_  $$_/  
+ \____  $$| $$  \ $$  /$$$$$$$| $$  | $$| $$  \ $$| $$ | $$ | $$| $$____/| $$  \ $$| $$  \__/  | $$    
+ /$$  \ $$| $$  | $$ /$$__  $$| $$  | $$| $$  | $$| $$ | $$ | $$| $$     | $$  | $$| $$        | $$ /$$
+|  $$$$$$/| $$  | $$|  $$$$$$$|  $$$$$$$|  $$$$$$/|  $$$$$/$$$$/| $$     |  $$$$$$/| $$        |  $$$$/
+ \______/ |__/  |__/ \_______/ \_______/ \______/  \_____/\___/ |__/      \______/ |__/         \___/
+    Version: 2.0 | Modo: {'aggressive' if args.aggressive else 'Stealth'}
+    {disclaimer()}
+    """)
+    
     try:
         ipaddress.ip_address(args.target)
-        resolved_target = args.target
         is_domain = False
     except ValueError:
         print(f"[*] Resolvendo domínio: {args.target}")
         try:
-            resolved_target = socket.gethostbyname(args.target)
+            args.target = socket.gethostbyname(args.target)
             is_domain = True
-            print(f"[+] Resolvido para IP: {resolved_target}")
+            print(f"[+] Resolvido para IP: {args.target}")
         except socket.gaierror:
             print("[-] Erro: Não foi possível resolver o domínio")
             sys.exit(1)
-
+    
     create_output_dir()
-    base_filename = args.output_name if hasattr(args, 'output_name') and args.output_name else f"shadowport_{args.target.replace('.', '_')}"
+    base_filename = args.output_name if args.output_name else f"shadowport_{args.target.replace('.', '_')}"
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     full_filename = f"{base_filename}_{timestamp}"
-
-    if args.mode == 'scan':
-        subdomains = []
-        if args.aggressive and is_domain:
-            subdomains = subdomain_scan(args.target)
-        if args.aggressive:
-            scan_mode = "Agressivo"
-            scan_data = run_aggressive_scan(resolved_target, args.range, args.speed, args.verbose)
-        else:
-            scan_mode = "Passivo"
-            open_ports = run_stealth_scan(resolved_target, args.range, args.speed, args.verbose)
-            scan_data = [{
-                "port": p,
-                "protocol": "TCP",
-                "status": "open",
-                "service": SERVICE_DB.get(p, {}).get("name", "Desconhecido"),
-                "risk_level": SERVICE_DB.get(p, {}).get("risk", "low"),
-                "banner": "",
-                "vulnerabilities": [],
-                "waf_detected": False,
-                "web_tech": {}
-            } for p in open_ports]
-        if args.html:
-            generate_report_html(args.target, scan_data, scan_mode, f"{full_filename}.html", subdomains)
-        if args.json:
-            generate_report_json(scan_data, f"{full_filename}.json")
-        generate_report_txt(args.target, scan_data, scan_mode, f"{full_filename}.txt")
-
-    elif args.mode == 'audit':
-        # Audit: sempre modo passivo, nunca executa exploits/plugins
-        print("[*] Modo AUDIT: apenas detecção, sem exploração!")
-        open_ports = run_stealth_scan(resolved_target, args.range, args.speed, args.verbose)
+    
+    subdomains = []
+    if args.aggressive and is_domain:
+        subdomains = subdomain_scan(args.target)
+    
+    if args.aggressive:
+        scan_mode = "Agressivo"
+        scan_data = run_aggressive_scan(args.target, args.range, args.speed, args.verbose)
+    else:
+        scan_mode = "Passivo"
+        open_ports = run_stealth_scan(args.target, args.range, args.speed, args.verbose)
         scan_data = [{
-            "port": p,
-            "protocol": "TCP",
+            "port": p, 
+            "protocol": "TCP", 
             "status": "open",
             "service": SERVICE_DB.get(p, {}).get("name", "Desconhecido"),
             "risk_level": SERVICE_DB.get(p, {}).get("risk", "low"),
@@ -904,30 +844,48 @@ def main():
             "waf_detected": False,
             "web_tech": {}
         } for p in open_ports]
-        if args.html:
-            generate_report_html(args.target, scan_data, "Audit", f"{full_filename}.html")
-        if args.json:
-            generate_report_json(scan_data, f"{full_filename}.json")
-        generate_report_txt(args.target, scan_data, "Audit", f"{full_filename}.txt")
-
-    elif args.mode == 'exec':
-        print(f"[*] Modo EXEC: execução de plugin '{args.plugin}'!")
-        plugin = load_plugin(args.plugin)
-        plugin_args = args.plugin_args if args.plugin_args else []
-        # Plugins devem implementar: run(target, options)
-        result = plugin.run(resolved_target, plugin_args)
-        print(f"[+] Resultado do plugin '{args.plugin}':\n{result}")
+    
+    if args.html:
+        generate_report_html(
+            args.target, 
+            scan_data, 
+            scan_mode,
+            f"{full_filename}.html",
+            subdomains
+        )
+    
+    if args.json:
+        generate_report_json(
+            scan_data,
+            f"{full_filename}.json"
+        )
+    
+    generate_report_txt(
+        args.target,
+        scan_data,
+        scan_mode,
+        f"{full_filename}.txt"
+    )
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="ShadowPort v2 - Ferramenta Avançada de Footprinting")
+    parser.add_argument("-t", "--target", required=True, help="IP ou domínio alvo")
+    parser.add_argument("--range", default="1-1000", help="Range de portas (ex: 1-1000)")
+    parser.add_argument("--aggressive", action="store_true", help="Ativa modo agressivo")
+    parser.add_argument("--html", action="store_true", help="Gera relatório HTML")
+    parser.add_argument("--json", action="store_true", help="Gera relatório JSON")
+    parser.add_argument("--verbose", action="store_true", help="Mostra detalhes da execução")
+    parser.add_argument("--output-name", help="Nome personalizado para arquivos de saída")
+    parser.add_argument("--speed", choices=["slow", "medium", "fast"], default="medium", 
+                        help="Velocidade do scan (padrão: medium)")
+    
+    args = parser.parse_args()
+    
     try:
         main()
     except KeyboardInterrupt:
-        print("\n[-] Execução interrompida pelo usuário")
+        print("\n[-] Scan interrompido pelo usuário")
         sys.exit(0)
     except Exception as e:
         print(f"[-] Erro inesperado: {str(e)}")
-<<<<<<< HEAD
         sys.exit(1)
-=======
-        sys.exit(1)
->>>>>>> 56958d3ba797075cf568cf648c05165060f2aecb
