@@ -87,14 +87,71 @@ colorama>=0.4.4
 python-nmap>=0.6.1
 ```
 
-### System Dependencies (Kali/Parrot)
-```bash
-# Install additional tools
-sudo apt update
-sudo apt install nmap masscan dnsutils
+### System Dependencies & Core Tools
 
-# For raw packet crafting (required for stealth scans)
-sudo apt install python3-scapy
+#### Essential System Packages
+```bash
+# Update package repositories
+sudo apt update && sudo apt upgrade -y
+
+# Install core networking tools (REQUIRED)
+sudo apt install nmap masscan dnsutils netcat-traditional
+
+# Install Python development packages
+sudo apt install python3-dev python3-pip build-essential
+
+# Install Scapy system dependencies (CRITICAL for stealth scanning)
+sudo apt install python3-scapy libpcap-dev tcpdump
+
+# Alternative Scapy installation for advanced features
+sudo apt install python3-scapy python3-cryptography
+```
+
+#### Nmap Integration (HIGHLY RECOMMENDED)
+```bash
+# Verify Nmap installation
+nmap --version
+
+# Install latest Nmap from source (optional)
+wget https://nmap.org/dist/nmap-7.94.tar.bz2
+tar -xjf nmap-7.94.tar.bz2
+cd nmap-7.94
+./configure && make && sudo make install
+```
+
+#### Raw Socket Permissions (ESSENTIAL for Stealth Mode)
+```bash
+# Method 1: Grant capabilities to Python (RECOMMENDED)
+sudo setcap cap_net_raw,cap_net_admin+eip $(which python3)
+
+# Method 2: Always run with sudo (ALTERNATIVE)
+# sudo python3 shadowport.py target --stealth
+
+# Verify raw socket access
+python3 -c "import socket; s=socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP); print('Raw sockets: OK')"
+```
+
+#### Distribution-Specific Instructions
+
+**🐉 Kali Linux:**
+```bash
+# All tools pre-installed, just update
+sudo apt update && sudo apt install python3-pip
+pip3 install -r requirements.txt
+```
+
+**🦜 Parrot Security OS:**
+```bash
+# Install missing packages
+sudo apt install python3-scapy libpcap-dev
+pip3 install -r requirements.txt
+```
+
+**🔧 Debian/Ubuntu:**
+```bash
+# Complete installation from scratch
+sudo apt install nmap python3-scapy python3-pip libpcap-dev tcpdump
+pip3 install -r requirements.txt
 ```
 
 ## 🎯 Basic Usage
@@ -198,42 +255,136 @@ PORT     STATE  SERVICE    VERSION
 [+] 4 open ports discovered
 ```
 
-## 💡 Usage Examples
+## 💡 Real-World Usage Examples
 
-### Example 1: Basic Network Scan
+### Example 1: Corporate Network Discovery
 ```bash
-python3 shadowport.py 192.168.1.1-254 -p 22,80,443
-```
-
-### Example 2: Stealth Reconnaissance
-```bash
-sudo python3 shadowport.py target.com --stealth --dns -o recon_report.json
-```
-
-### Example 3: Service Enumeration
-```bash
-python3 shadowport.py 10.10.10.10 -p 1-65535 --format xml -o full_scan.xml
-```
-
-### Example 4: SSH Brute Force
-```bash
-python3 shadowport.py 192.168.1.50 --ssh-brute -u userlist.txt -w passwords.txt
-```
-
-### Example 5: UDP Service Discovery
-```bash
-sudo python3 shadowport.py 192.168.1.0/24 --udp -p 53,67,68,69,161
-```
-
-### Example 6: Corporate Network Assessment
-```bash
-python3 shadowport.py company.com \
-  --dns \
+# Scenario: Security assessment of company network
+python3 shadowport.py 10.0.0.0/24 \
   --stealth \
-  -p 21,22,23,25,53,80,110,143,443,993,995 \
+  -p 21,22,23,25,53,80,135,139,443,445,993,995,3389 \
+  --dns \
   --format json \
-  -o corporate_assessment.json \
-  --threads 50
+  -o corporate_scan.json \
+  --threads 100 \
+  --delay 0.5
+
+# Expected Output:
+[+] Discovered 15 live hosts
+[+] Found 47 open ports across network
+[+] Critical services: RDP (3389), SMB (445), SSH (22)
+[+] Potential vulnerabilities: 3 hosts with Telnet (23)
+```
+
+### Example 2: Web Application Infrastructure Mapping
+```bash
+# Scenario: Mapping web application infrastructure
+python3 shadowport.py webapp.company.com \
+  --dns \
+  -p 80,443,8000,8080,8443,9000,9443 \
+  --format xml \
+  -o webapp_infrastructure.xml
+
+# DNS Enumeration Results:
+api.webapp.company.com     → 203.0.113.10
+admin.webapp.company.com   → 203.0.113.15
+staging.webapp.company.com → 203.0.113.20
+```
+
+### Example 3: SSH Server Hardening Assessment
+```bash
+# Scenario: Testing SSH security across server farm
+python3 shadowport.py servers.txt \
+  -p 22,2222 \
+  --ssh-brute \
+  -u common_users.txt \
+  -w weak_passwords.txt \
+  --delay 2.0 \
+  -o ssh_assessment.csv
+
+# Sample Results:
+192.168.1.50:22   → SUCCESS: admin:admin123
+192.168.1.51:2222 → SUCCESS: root:password
+192.168.1.52:22   → FAILED: Strong authentication
+```
+
+### Example 4: IoT Device Discovery
+```bash
+# Scenario: Identifying IoT devices on network
+python3 shadowport.py 192.168.1.0/24 \
+  -p 23,80,443,502,1883,8080,8443,9000 \
+  --format json \
+  -o iot_devices.json
+
+# Typical IoT Signatures:
+Port 1883 → MQTT Broker (IoT Communication)
+Port 502  → Modbus (Industrial Control)
+Port 23   → Telnet (Legacy IoT Devices)
+```
+
+### Example 5: Firewall Rule Testing
+```bash
+# Scenario: Testing firewall configuration
+python3 shadowport.py internal.company.com \
+  --stealth \
+  -p 1-65535 \
+  --format txt \
+  -o firewall_test.txt \
+  --threads 200
+
+# Firewall Analysis:
+Allowed: 22,80,443 (Expected)
+Blocked: 135,139,445 (SMB - Good)
+Unexpected: 3389 (RDP - Security Risk)
+```
+
+### Example 6: Bug Bounty Reconnaissance
+```bash
+# Scenario: Initial reconnaissance for bug bounty
+python3 shadowport.py target.hackerone.com \
+  --dns \
+  -p 80,443,8000-8999 \
+  --format json \
+  -o bugbounty_recon.json \
+  --delay 1.0
+
+# Subdomain Discovery:
+api.target.hackerone.com   → 104.16.1.1
+dev.target.hackerone.com   → 104.16.1.2
+test.target.hackerone.com  → 192.168.1.100 (Internal IP Exposed!)
+```
+
+### Example 7: Database Server Audit
+```bash
+# Scenario: Database security assessment
+python3 shadowport.py db-servers.txt \
+  -p 1433,1521,3306,5432,5984,6379,9042,27017 \
+  --format csv \
+  -o database_audit.csv
+
+# Database Services Found:
+MySQL (3306)     → 5 servers
+PostgreSQL (5432) → 3 servers
+Redis (6379)     → 2 servers (No authentication!)
+MongoDB (27017)  → 1 server
+```
+
+### Example 8: Stealth Penetration Test
+```bash
+# Scenario: Advanced evasion during red team exercise
+sudo python3 shadowport.py target-network.com \
+  --stealth \
+  --decoy-ips 10.0.0.1,10.0.0.2,10.0.0.3 \
+  -p 22,80,443 \
+  --source-port 53 \
+  --delay 5.0 \
+  -o stealth_scan.json
+
+# Evasion Techniques Applied:
+✓ SYN Stealth Scanning
+✓ Decoy IP Addresses
+✓ DNS Source Port Spoofing
+✓ Slow Scan (5s delay)
 ```
 
 ## 🔍 Advanced Features
@@ -390,6 +541,107 @@ pip3 install --upgrade -r requirements.txt
 # Solution: Increase thread count
 python3 shadowport.py target -t 200
 ```
+
+## 🤝 Contributing
+
+We welcome contributions from the cybersecurity community! Here's how you can help improve ShadowPort:
+
+### How to Contribute
+
+#### 🐛 Bug Reports
+- Use GitHub Issues to report bugs
+- Include detailed steps to reproduce
+- Provide system information (OS, Python version)
+- Attach relevant log files or screenshots
+
+#### ✨ Feature Requests
+- Open a GitHub Issue with the "enhancement" label
+- Clearly describe the proposed feature
+- Explain the use case and benefits
+- Consider implementation complexity
+
+#### 💻 Code Contributions
+```bash
+# Fork the repository
+git clone https://github.com/yourusername/ShadowPort.git
+cd ShadowPort
+
+# Create a feature branch
+git checkout -b feature/amazing-feature
+
+# Make your changes and test thoroughly
+python3 -m pytest tests/
+
+# Commit with descriptive messages
+git commit -m "Add advanced firewall evasion technique"
+
+# Push and create a Pull Request
+git push origin feature/amazing-feature
+```
+
+### Development Guidelines
+
+#### Code Style
+```python
+# Follow PEP 8 style guidelines
+# Use meaningful variable names
+# Add docstrings to functions
+# Include type hints where possible
+
+def scan_port(target: str, port: int, timeout: float = 3.0) -> dict:
+    """
+    Scan a specific port on target host.
+    
+    Args:
+        target: Target IP address or hostname
+        port: Port number to scan
+        timeout: Connection timeout in seconds
+    
+    Returns:
+        dict: Scan result with port status and service info
+    """
+    pass
+```
+
+#### Testing
+```bash
+# Write tests for new features
+# Ensure all tests pass before submitting PR
+python3 -m pytest tests/ -v
+
+# Test on multiple Python versions
+python3.6 -m pytest tests/
+python3.9 -m pytest tests/
+python3.11 -m pytest tests/
+```
+
+#### Documentation
+- Update README.md for new features
+- Add docstrings to all new functions
+- Include usage examples
+- Update command-line help text
+
+### Community Guidelines
+
+#### 🌟 Recognition
+Contributors will be acknowledged in:
+- README.md contributors section
+- Release notes
+- GitHub contributor page
+
+#### 📧 Contact
+- Join our Discord server: [ShadowPort Community]
+- Follow updates: [@CHDevSec](https://twitter.com/chdevsec)
+- Email: security@chdevsec.com
+
+### Priority Contributions
+
+We're particularly interested in:
+- **New Evasion Techniques**: Advanced firewall bypass methods
+- **Protocol Support**: Additional protocols (SNMP, LDAP, etc.)
+- **Performance Optimization**: Faster scanning algorithms
+- **OS Fingerprinting**: Enhanced operating system detection
+- **Reporting Features**: Better output formats and visualizations
 
 ## 📄 License
 
