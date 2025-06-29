@@ -926,4 +926,8 @@ if __name__ == "__main__":
         sys.exit(0)
     except Exception as e:
         print(f"[-] Erro inesperado: {str(e)}")
+<<<<<<< HEAD
         sys.exit(1)
+=======
+        sys.exit(1)
+>>>>>>> 56958d3ba797075cf568cf648c05165060f2aecb
